@@ -1,0 +1,22 @@
+<html>
+<head><title></title></head>
+<body>
+
+<p>
+{{ nickname }}<a href="{{ url }}">{{ url_text }}</a>
+</p>
+
+<form method="GET" action=".">
+  <input type="text" name='searched'/>
+  <input type="submit" value="search"/>
+</form>
+
+<div>
+{% for product in founded  %}
+<p><a href = product/{{ product.nm }}>{{ product.nm }}</a></p>
+<p>{{ product.desc }}</p>
+{% endfor %}
+</div>
+
+</body>
+</html>

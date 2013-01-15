@@ -1,0 +1,23 @@
+application: dospadel
+version: 1
+runtime: python27
+api_version: 1
+threadsafe: true
+
+handlers:
+- url: /
+  script: dospadel.app
+
+- url: /product
+  script: dospadel.app
+  login: admin
+
+- url: /product/(.*?)
+  script: dospadel.app
+
+- url: /reserve
+  script: dospadel.app
+
+libraries:
+- name: jinja2
+  version: latest
