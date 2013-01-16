@@ -2,22 +2,19 @@
 <head><title>Productos disponibles</title></head>
 <body>
 
-<div>
-{% for product in products  %}
-<p>{{ product.nm }}</p>
-<p>{{ product.desc }}</p>
-{% endfor %}
-</div>
 
-<form action="product" method="POST">
+<form action="{{upload_url}}" enctype="multipart/form-data" method="POST">
   <p>name<input type="text" name="nm"/></p>
   <p>description<input type="text" name="desc"/></p>
   <p>tags<input type="text" name="tags"/></p>
-  <p><input type="submit" value="send"/></p>
+
+  <p>image<input type="file" name="img"/></p>
+  <p><input type="submit" name="switch"/></p>
 </form>
 
 
 </body>
 </html>
+
 
 

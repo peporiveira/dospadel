@@ -8,14 +8,20 @@ handlers:
 - url: /
   script: dospadel.app
 
-- url: /product
+- url: /new_product
   script: dospadel.app
   login: admin
+
+- url: /product/img
+  script: dospadel.app
 
 - url: /product/(.*?)
   script: dospadel.app
 
 - url: /reserve
+  script: dospadel.app
+
+- url: /upload
   script: dospadel.app
 
 libraries:

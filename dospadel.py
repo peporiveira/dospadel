@@ -15,22 +15,20 @@ jinja_environment = jinja2.Environment(
 
 from google.appengine.ext import db
 from google.appengine.api import users
+from google.appengine.api import images                         #tratamiento de imagenes
+from google.appengine.ext import blobstore                      #subida de archivos
+from google.appengine.ext.webapp import blobstore_handlers
 
-class Journey(db.Model):
-    """ contiene horas de la jornada laboral """
-    hr = db.IntegerProperty()
-
-class Holiday(db.Model):
-    """ contiene dias no laborables """
-    hld = db.DateProperty()
 
 class Product(db.Model):
     """ Models an individual product """
     nm = db.StringProperty()
     desc = db.StringProperty()
     tags = db.StringProperty()
+    image = blobstore.BlobReferenceProperty()
 
 class Reserve(db.Model):
+    """ Models an individual reserve"""
     product = db.ReferenceProperty(Product,
                                    collection_name='reserves')
     userid = db.StringProperty()
@@ -38,8 +36,6 @@ class Reserve(db.Model):
     paykey = db.StringProperty() #paypal paykey
     status = db.StringProperty() #payment status
 
-class Administrator(db.Model):
-    userid = db.StringProperty()
 
 class MainPage(webapp2.RequestHandler):
     def get(self):
@@ -51,18 +47,20 @@ class MainPage(webapp2.RequestHandler):
             url = users.create_login_url(self.request.uri)
             url_text = 'login'
         
-        founded = []  #productos encontrados 
+
+        #busqueda de productos
+        founded = []
         searched=self.request.get('searched').split(' ',10)
         for word in searched:
-            products = Product.all()
+            products = Product.all()                                    #consulta productos en bd
             for product in products:
                 tags = product.tags.split(',',20)
                 for tag in tags:
                     if tag==word:
-                        founded.append(product)
+                        founded.append(product)                         #agrega producto a la lista
                         break
         
-
+        #variables de la plantilla
         template_values = {
             'url': url,
             'url_text': url_text,
@@ -73,32 +71,39 @@ class MainPage(webapp2.RequestHandler):
         self.response.out.write(template.render(template_values))
 
 class ProductPage(webapp2.RequestHandler):
+    """Pagina de cada producto"""
     def get(self):
-        products=Product.all()
+        """formulario para nuevo producto"""
+        upload_url = blobstore.create_upload_url('/upload')      #upload URL for the product image
 
         template_values = {
-            'products': products,
+            'upload_url': upload_url,
         }
         template = jinja_environment.get_template('product.html')
         self.response.out.write(template.render(template_values))
 
+class UploadProductImage(blobstore_handlers.BlobstoreUploadHandler):
     def post(self):
-        product=Product()
+        upload_files = self.get_uploads('img')
+        blob_info = upload_files[0]
         
-        #kind p
+                                      
+        #product=Product()
+        ##kind p
         p=Product(key_name=self.request.get('nm'))
-        #properties
+        ##properties
         p.nm=self.request.get('nm')
         p.desc=self.request.get('desc')
         p.tags=self.request.get('tags')
+        p.image=blob_info.key()
         p.put()
-            
-        self.redirect('product?'+urllib.urlencode({'nm':product.nm}))    
+        self.redirect(str('product/'+p.nm))    
 
 class ReservePage(webapp2.RequestHandler):
+    """Formalizar reservas de los productos"""
     def get(self,productnm):
         k=db.Key.from_path('Product',productnm)
-        product=db.get(k)
+        product=db.get(k)                                           #ejemplo de consulta por key a la bd
 
         template_values={
             'product': product,
@@ -107,11 +112,10 @@ class ReservePage(webapp2.RequestHandler):
         self.response.out.write(template.render(template_values))
   
     def post(self,productnm):
-        date=self.request.get('date')
-        time=self.request.get('time')
-        self.request.get('hours')
-        ##comprueba que la fechahora es correcta y está disponible
-        ##si es asi
+        date=self.request.get('date')                               #fecha de la reserva
+        time=self.request.get('time')                               #hora  "  "  "
+        hours=self.request.get('hours')                             
+   
         d=date.split('-',3)
         t=time.split(':',2)
         reserve_date=datetime.date(int(d[0]),int(d[1]),int(d[2]))
@@ -119,14 +123,29 @@ class ReservePage(webapp2.RequestHandler):
 
         r = Reserve.all()
         r.filter('date=',reserve_date).filter('time=',reserve_time)
-        if r.count()>0:
+        if r.count()>0:                                             #si esta reservado, vuelve
             self.redirect('product/'+productnm)
-        else:
+        else:                                                       #ver API de PAYPAL
             #self.redirect('product?'+urllib.urlencode({'ip':self.request.remote_addr}))
             pp=paypal.Paypal("franje_1356296325_biz_api1.yahoo.es","1356296345",self.request.remote_addr,"AcHhwt4WsEqB3tcpSOplSMzcxiIuAMMH4ZiPLtmz1fASuBhmHQEeWAQX")
             out=pp.pay("http://dospadel.appspot.com","es_ES","EUR","franje18@yahoo.es",10.00,"http://dospadel.appspot.com","http://dospadel.appspot.com/reserve")
-            #self.redirect('https://www.paypal.com/webapps/adaptivepayment/flow/pay?'+urllib.urlencode({'paykey':out}))
-            self.redirect('https://www.sandbox.paypal.com/cgi-bin/webscr?cmd=_ap-payment&paykey=%s' % out)
+            self.redirect('https://www.sandbox.paypal.com/cgi-bin/webscr?'+urllib.urlencode({'cmd=_ap-payment&paykey':out}) )
+
+class ProductImage(webapp2.RequestHandler):
+    """Muestra la imagen correspondiente al producto"""
+    def get(self,productnm):
+        k = db.Key.from_path('Product',productnm)
+        product = db.get(k)
+
+        blob_info = product.image
+        if blob_info:
+            img = images.Image(blob_key=blob_info.key())
+            img.resize(width=100,height=100)
+            img=img.execute_transforms(output_encoding=images.JPEG)
+            self.response.headers['Content-Type']='image/jpeg'
+            self.response.out.write(img)
+            return
+        self.error(404)
 
 class IPNHandler(webapp2.RequestHandler):
     def post(self):
@@ -141,7 +160,9 @@ class IPNHandler(webapp2.RequestHandler):
         
 
 app = webapp2.WSGIApplication([('/', MainPage),
-                               ('/product', ProductPage),
+                               ('/product/(.*)/img', ProductImage),
+                               ('/new_product', ProductPage),
+                               ('/upload', UploadProductImage),
                                (r'/product/(.*)',ReservePage),
                                ('/reserve', IPNHandler)],
                               debug=True)
