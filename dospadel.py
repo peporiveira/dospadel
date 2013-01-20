@@ -3,6 +3,7 @@ import datetime
 import cgi
 import datetime
 import urllib
+import urllib2
 import webapp2
 import jinja2
 
@@ -35,7 +36,8 @@ class Reserve(db.Model):
     dt = db.DateTimeProperty()
     paykey = db.StringProperty() #paypal paykey
     status = db.StringProperty() #payment status
-
+    created = db.DateTimeProperty(auto_now=True) #hora y fecha de creación de la reserva
+ 
 
 class MainPage(webapp2.RequestHandler):
     def get(self):
@@ -112,24 +114,63 @@ class ReservePage(webapp2.RequestHandler):
         self.response.out.write(template.render(template_values))
   
     def post(self,productnm):
+        k=db.Key.from_path('Product',productnm)
+        product=db.get(k)
+
+
         date=self.request.get('date')                               #fecha de la reserva
         time=self.request.get('time')                               #hora  "  "  "
         hours=self.request.get('hours')                             
    
         d=date.split('-',3)
         t=time.split(':',2)
-        reserve_date=datetime.date(int(d[0]),int(d[1]),int(d[2]))
-        reserve_time=datetime.time(int(t[0]),int(t[1]))
+        dt=datetime.datetime(int(d[0]),int(d[1]),int(d[2]),int(t[0]),int(t[1]))
 
-        r = Reserve.all()
-        r.filter('date=',reserve_date).filter('time=',reserve_time)
-        if r.count()>0:                                             #si esta reservado, vuelve
-            self.redirect('product/'+productnm)
-        else:                                                       #ver API de PAYPAL
-            #self.redirect('product?'+urllib.urlencode({'ip':self.request.remote_addr}))
-            pp=paypal.Paypal("franje_1356296325_biz_api1.yahoo.es","1356296345",self.request.remote_addr,"AcHhwt4WsEqB3tcpSOplSMzcxiIuAMMH4ZiPLtmz1fASuBhmHQEeWAQX")
-            out=pp.pay("http://dospadel.appspot.com","es_ES","EUR","franje18@yahoo.es",10.00,"http://dospadel.appspot.com","http://dospadel.appspot.com/reserve")
-            self.redirect('https://www.sandbox.paypal.com/cgi-bin/webscr?'+urllib.urlencode({'cmd=_ap-payment&paykey':out}) )
+        #falta controlar que las reservas no se solapen
+        pp=paypal.Paypal("franje_1356296325_biz_api1.yahoo.es","1356296345",
+                         self.request.remote_addr,"AcHhwt4WsEqB3tcpSOplSMzcxiIuAMMH4ZiPLtmz1fASuBhmHQEeWAQX")
+        paykey=pp.pay("http://dospadel.appspot.com/reserves","es_ES","EUR","franje18@yahoo.es",10.00,
+                      "http://dospadel.appspot.com",
+                      "http://dospadel.appspot.com/transactions")
+            
+        res=Reserve(key_name=paykey)
+        res.product=product
+        res.paykey=paykey
+        res.status="unknow"
+        res.userid=users.get_current_user().user_id()
+        res.dt=dt
+        res.put()
+        
+        self.redirect('https://www.sandbox.paypal.com/webscr?cmd=_ap-payment&'+urllib.urlencode({'paykey':paykey}) )
+
+
+class MyReservesPage(webapp2.RequestHandler):
+    """Detalle de reservas de cada usuario"""
+    def get(self):
+        reserves = db.GqlQuery("SELECT *  "
+                               "FROM Reserve "
+                               "WHERE userid = :1 "
+                               "ORDER BY created DESC LIMIT 10",
+                               users.get_current_user().user_id())
+
+        template_values={
+            'reserves' : reserves,
+            'user' : users.get_current_user(),
+        }
+        template = jinja_environment.get_template('myreserves.html')
+        self.response.out.write(template.render(template_values))
+
+class ReserveDetailPage(webapp2.RequestHandler):
+    """Detalle de una reserva concreta."""
+    def get(self,paykey):
+        k=db.Key.from_path('Reserve',paykey)
+        reserve=db.get(k)
+
+        template_values={
+            'reserve' : reserve,
+        }
+        template = jinja_environment.get_template('reservedetail.html')
+        self.response.out.write(template.render(template_values))
 
 class ProductImage(webapp2.RequestHandler):
     """Muestra la imagen correspondiente al producto"""
@@ -147,22 +188,38 @@ class ProductImage(webapp2.RequestHandler):
             return
         self.error(404)
 
-class IPNHandler(webapp2.RequestHandler):
+
+class Transactions(webapp2.RequestHandler):
+    """Recibe mensajes IPN de la API de paypal y agrega informacioon a Reserve"""
+    def get(self):
+        self.request.GET.copy()
+        
     def post(self):
-        #leer informacion recibida por POST y reenviar a paypal
-        verify_request = urllib2.Request('https://www.sandbox.paypal.com/cgi-bin/webscr?cmd=_notify-validate',
-                                         self.request.copy)
+        ##verificar que el mensaje procede de paypal
+        verify_request=urllib2.Request("https://www.sandbox.paypal.com/cgi-bin/webscr?cmd=_notify-validate&",urllib.urlencode(self.request.POST.copy()))
         verify_response = urllib2.urlopen(verify_request)
-        raw_response=verify_response.content()
+        if verify_response.code != 200:
+            self.error='Paypal response code was %i' % verify_response
+            return
+        raw_response=verify_response.read()
+        if raw_response != 'VERIFIED':
+            self.error='Paypal response was %s' % raw_response
+            return
         
-        self.response.out.write(raw_response)
-        
-        
+        paykey=self.request.get('pay_key')
+        k = db.Key.from_path('Reserve',paykey)
+        reserve=db.get(k)
+        reserve.status=self.request.get('status')
+        reserve.put()
+
 
 app = webapp2.WSGIApplication([('/', MainPage),
                                ('/product/(.*)/img', ProductImage),
                                ('/new_product', ProductPage),
+                               ('/reserves',MyReservesPage),
                                ('/upload', UploadProductImage),
                                (r'/product/(.*)',ReservePage),
-                               ('/reserve', IPNHandler)],
+                               (r'/reserves/(.*)',ReserveDetailPage),
+                               ('/transactions',Transactions),
+                              ],
                               debug=True)

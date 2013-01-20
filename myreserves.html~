@@ -1,0 +1,15 @@
+<html>
+<head><title>Mis reservas</title></head>
+<p>usuario {{userid}}</p>
+{% for reserve in reserves %}
+<div>
+  <p>{{reserve.paykey}}</p>
+  <p>{{reserve.status}}</p>
+  <p>{{reserve.product.nm}}</p>
+  <p>{{reserve.userid}}</p>
+  <p>{{reserve.created}}</p>
+</div>
+<hr>
+{% endfor %}
+
+</html>

@@ -1,0 +1,10 @@
+<html><head><title>Reserva {{ reserve.product.nm }}</title></head>
+<body>
+
+<div>
+  <p>{{ reserve.product.nm }}
+  <p>{{ reserve.status }}
+</div>
+
+</body>
+</html>

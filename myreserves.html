@@ -1,0 +1,14 @@
+<html>
+<head><title>Mis reservas</title></head>
+<p>usuario {{user}}</p>
+{% for reserve in reserves %}
+<div>
+  <p>Reserva de <a href='/product/{{reserve.product.nm}}'>{{reserve.product.nm}}</a></p>
+  <p>Hora y fecha: {{reserve.dt}}
+  <p>Reservada el {{reserve.created}}</p>
+  <p><a href='/reserves/{{reserve.paykey}}'>Ver detalles de pago y reserva</a>
+</div>
+<hr>
+{% endfor %}
+
+</html>

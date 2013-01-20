@@ -1,0 +1,13 @@
+<html><head><title>Reserva {{ reserve.product.nm }}</title></head>
+<body>
+
+<div>
+  {% if reserve.status == "COMPLETED" %}
+    <p>Pago completaado</p>
+  {% else %}
+    <p>Reserva pendiente de pago</p>
+  {% endif %}
+</div>
+
+</body>
+</html>

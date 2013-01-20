@@ -18,10 +18,19 @@ handlers:
 - url: /product/(.*?)
   script: dospadel.app
 
-- url: /reserve
+- url: /reserves
   script: dospadel.app
+  login: required
+
+- url: /reserves/(.*?)
+  script: dospadel.app
+  login: required
 
 - url: /upload
+  script: dospadel.app
+  login: admin
+
+- url: /transactions
   script: dospadel.app
 
 libraries:
