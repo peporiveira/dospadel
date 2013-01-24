@@ -5,6 +5,12 @@ api_version: 1
 threadsafe: true
 
 handlers:
+- url: /stylesheets
+  static_dir: stylesheets
+
+- url: /src
+  static_dir: src
+
 - url: /
   script: dospadel.app
 
@@ -32,6 +38,16 @@ handlers:
 
 - url: /transactions
   script: dospadel.app
+
+- url: /check
+  script: dospadel.app
+
+- url: /products
+  script: dospadel.app
+
+- url: /admin
+  script: dospadel.app
+  login: admin
 
 libraries:
 - name: jinja2

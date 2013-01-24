@@ -1,0 +1,23 @@
+<html>
+<head><title></title></head>
+<body>
+
+<p>Jornada laboral</p>
+<p>Agregar hora</p>
+<form method='POST' action='/admin'>
+  <p><input type='hidden' name='option' value='jl'/></p>
+  <p>Hora<input type='text' name='hr'/></p>
+  <p><input type='submit' name='agregar'/></p>
+</form>
+<hr>
+<p>Dias festivos</p>
+<p>Agregar un festivo</p>
+<form method='POST' action='/admin'>
+  <p><input type='hidden' name='option' value='df'/></p>
+  <p>Fecha<input type='date' name='dt'/></p>
+  <p>Comentario<input type='text' name='comment'/></p>
+  <p><input type='submit' name='agregar'/></p>
+</form>
+
+</body>
+</html>
