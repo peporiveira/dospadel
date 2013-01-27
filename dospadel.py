@@ -119,6 +119,19 @@ class UploadProductImage(blobstore_handlers.BlobstoreUploadHandler):
 class ReservePage(webapp2.RequestHandler):
     """Maneja las reservas de los productos"""
     def get(self,productnm):
+
+
+        ## login
+        user = users.get_current_user()
+        if user:
+            url = users.create_logout_url(self.request.uri)
+            url_text = 'logout'
+        else:
+            url = users.create_login_url(self.request.uri)
+            url_text = 'login'
+
+
+
         k=db.Key.from_path('Product',productnm)
         product=db.get(k)                                           #ejemplo de consulta por key a la bd
 
@@ -126,7 +139,9 @@ class ReservePage(webapp2.RequestHandler):
 
         template_values={
             'product': product,
-            'user': users.get_current_user(),
+            'user': user,
+            'url_text': url_text,
+            'url': url,
             'journey': journey
         }
         template = jinja_environment.get_template('reserve.html')
@@ -270,9 +285,21 @@ class Check(webapp2.RequestHandler):
 class AllProductsPage(webapp2.RequestHandler):
     """Lista todos los productos disponibles"""
     def get(self):
+        ## login
+        user = users.get_current_user()
+        if user:
+            url = users.create_logout_url(self.request.uri)
+            url_text = 'logout'
+        else:
+            url = users.create_login_url(self.request.uri)
+            url_text = 'login'
+
         products = Product.all()
         template_values={
             'products' : products,
+            'nickname' : user,
+            'url_text' : url_text,
+            'utl' : url,
         }
         template = jinja_environment.get_template('all_products.html')
         self.response.out.write(template.render(template_values))
