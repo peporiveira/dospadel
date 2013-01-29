@@ -1,17 +1,18 @@
-<html lang="en">
-<head>
-  <title></title>
-  <!-- Bootstrap -->
-  <link href="/stylesheets/bootstrap.min.css" rel="stylesheet" media="screen">
+{% extends "base.html" %}
 
-  <script type="text/javascript" src="/src/jquery.js"></script>
-  <script type="text/javascript" src="/src/bootstrap.min.js"></script> <!-- estilo -->
-  <style type="text/css">
-    body {
-    padding-top: 60px;
-    padding-bottom: 40px;
-    }
-  </style>
+
+{% block head %}
+  {{ super() }}
+  <link href="/stylesheets/datepicker.css" rel="stylesheet" media="screen"/>
+  <script type="text/javascript" src="/src/bootstrap-datepicker.js"></script>
+
+{% endblock head%}
+
+{% block title %}
+Producto
+{% endblock %}
+
+
   <!--
   <script>
     function test(){
@@ -39,9 +40,7 @@
     
   </script>
   -->
-</head>
-<body>
-
+{% block header %}
   <div class="navbar navbar-inverse navbar-fixed-top">
     <div class="navbar-inner">
       <div class="container">
@@ -68,7 +67,7 @@
       </div>
     </div>
   </div>
-
+{% endblock header %}
 <!--
 <div>
 <div id='product_nm'>{{ product.nm }}</div>
@@ -97,6 +96,13 @@
 {% endif %}
 -->
 
+{% block content %}
+<script>
+  $(function(){
+     $('.datepicker').datepicker()
+    }); 
+</script>
+
 <div class="container">
   <div class="row-fluid" id="content-bar">
     <div class="row-fluid">
@@ -112,12 +118,12 @@
       </ul>
       
       <div class="row-fluid">
-	<div class="span3">
+	<div class="span2">
 	  <img class="img-polaroid" src="/product/{{product.nm}}/img"/>
 	</div>
 	<div class="span6">
 	  <form class='form-inline' method='POST' action={{ product.nm }} id='form_new_reserve'>
-	    <input type="date" name="date"/>
+	    <input type="text" class="datepicker" data-date-format="dd-mm-yyyy" name="date"/>
 	    <input type="hidden" name="name" value="{{product.nm}}"/>
 	    <select name="time">
 	      {% for element in journey %}
@@ -137,7 +143,4 @@
   </div>
 </div>
 
-
-
-</body>
-</html>
+{% endblock content %}
