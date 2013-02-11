@@ -38,16 +38,18 @@
 <div class="row-fluid" id="content-bar">
   <div class="row-fluid">
     <div>
-      {% if reserve.status == "COMPLETED" %}
+      {% if reserve.status == "Completed" %}
       <p>Pago completado</p>
       {% else %}
       <p>Reserva pendiente de pago</p>
       {% endif %}
     </div>
 
-    <button class="btn btn-small"><i class="icon-hand-left"></i> Cancel and refund</button>
+    <form action="/cancel_reserve" method="POST">
+      <input type="hidden" name="paykey" value="{{reserve.paykey}}"/>
+      <input class="btn btn-small" type="submit" value="Cancelar"/>
+    </form>
     <button class="btn btn-small"><i class="icon-trash"></i> Delete</button>
-    
     
   </div>
 </div>

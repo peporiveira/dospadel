@@ -167,12 +167,12 @@ class ReservePage(webapp2.RequestHandler):
         dt=datetime.datetime(int(d[2]),int(d[1]),int(d[0]),int(t[0]),int(t[1]))  #formato fecha mm/dd/yyyy
 
         #falta controlar que las reservas no se solapen
-        pp=paypal.Paypal("franje_1356296325_biz_api1.yahoo.es","1356296345",
+        p=paypal.Pay("franje_1356296325_biz_api1.yahoo.es","1356296345",
                          self.request.remote_addr,"AcHhwt4WsEqB3tcpSOplSMzcxiIuAMMH4ZiPLtmz1fASuBhmHQEeWAQX")
-        paykey=pp.pay("http://dospadel.appspot.com/reserves","es_ES","EUR","franje18@yahoo.es",10.00,
-                      "http://dospadel.appspot.com",
-                      "http://dospadel.appspot.com/transactions")
-            
+        paykey=p.pay("http://dospadel.appspot.com/reserves","es_ES","EUR","franje_1356296325_biz@yahoo.es",10.00,
+                     "http://dospadel.appspot.com",
+                     "http://dospadel.appspot.com/transactions")
+        
         res=Reserve(key_name=paykey)
         res.product=product
         res.paykey=paykey
@@ -274,8 +274,11 @@ class Transactions(webapp2.RequestHandler):
         
         paykey=self.request.get('pay_key')
         k = db.Key.from_path('Reserve',paykey)
+        
+        logging.info(self.request.POST.copy())
+
         reserve=db.get(k)
-        reserve.status=self.request.get('status')
+        reserve.status=self.request.get('transaction[0].status_for_sender_txn')
         reserve.put()
 
 class Check(webapp2.RequestHandler):
@@ -307,7 +310,15 @@ class CancelReserve(webapp2.RequestHandler):
         pass
 
     def post(self):
-        pass
+        """ Comprueba que la reserva se puede cancelar, y si es así
+            cancela """
+        p=paypal.Refund("franje_1356296325_biz_api1.yahoo.es","1356296345",
+                         self.request.remote_addr,"AcHhwt4WsEqB3tcpSOplSMzcxiIuAMMH4ZiPLtmz1fASuBhmHQEeWAQX")
+        
+        p.refund(self.request.get('paykey'))
+        
+        
+        self.redirect("/reserves/"+self.request.get('paykey'))
 
 class AllProductsPage(webapp2.RequestHandler):
     """Lista todos los productos disponibles"""
@@ -370,5 +381,6 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/check', Check),
                                ('/products',AllProductsPage),
                                ('/admin',AdminPage),
+                               ('/cancel_reserve',CancelReserve),
                               ],
                               debug=True)

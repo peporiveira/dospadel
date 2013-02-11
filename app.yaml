@@ -52,6 +52,10 @@ handlers:
   script: dospadel.app
   login: admin
 
+- url: /cancel_reserve
+  script: dospadel.app
+  login: required
+
 libraries:
 - name: jinja2
   version: latest
