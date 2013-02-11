@@ -9,6 +9,7 @@ import jinja2
 import json
 import os
 import paypal
+import logging
 
 
 jinja_environment = jinja2.Environment(
@@ -28,6 +29,7 @@ class Product(db.Model):
     nm = db.StringProperty()
     desc = db.StringProperty()
     tags = db.StringProperty()
+    price = db.FloatProperty()
     image = blobstore.BlobReferenceProperty()
 
 class Reserve(db.Model):
@@ -39,6 +41,7 @@ class Reserve(db.Model):
     paykey = db.StringProperty() #paypal paykey
     status = db.StringProperty() #payment status
     created = db.DateTimeProperty(auto_now=True) #hora y fecha de creación de la reserva
+    hide = db.BooleanProperty()  #oculta la reserva
 
 ##dias no laborables en los que no se permiten reservas
 class Holiday(db.Model):
@@ -113,12 +116,26 @@ class UploadProductImage(blobstore_handlers.BlobstoreUploadHandler):
         p.desc=self.request.get('desc')
         p.tags=self.request.get('tags')
         p.image=blob_info.key()
+        p.price=self.request.get('price')
         p.put()
         self.redirect(str('product/'+p.nm))    
 
 class ReservePage(webapp2.RequestHandler):
     """Maneja las reservas de los productos"""
     def get(self,productnm):
+
+
+        ## login
+        user = users.get_current_user()
+        if user:
+            url = users.create_logout_url(self.request.uri)
+            url_text = 'logout'
+        else:
+            url = users.create_login_url(self.request.uri)
+            url_text = 'login'
+
+
+
         k=db.Key.from_path('Product',productnm)
         product=db.get(k)                                           #ejemplo de consulta por key a la bd
 
@@ -126,7 +143,9 @@ class ReservePage(webapp2.RequestHandler):
 
         template_values={
             'product': product,
-            'user': users.get_current_user(),
+            'user': user,
+            'url_text': url_text,
+            'url': url,
             'journey': journey
         }
         template = jinja_environment.get_template('reserve.html')
@@ -141,17 +160,19 @@ class ReservePage(webapp2.RequestHandler):
         time=self.request.get('time')                               #hora  "  "  "
         hours=self.request.get('hours')                             
    
+        logging.info('fecha recibida '+date)
+
         d=date.split('-',3)
         t=time.split(':',2)
-        dt=datetime.datetime(int(d[0]),int(d[1]),int(d[2]),int(t[0]),int(t[1]))
+        dt=datetime.datetime(int(d[2]),int(d[1]),int(d[0]),int(t[0]),int(t[1]))  #formato fecha mm/dd/yyyy
 
         #falta controlar que las reservas no se solapen
-        pp=paypal.Paypal("franje_1356296325_biz_api1.yahoo.es","1356296345",
+        p=paypal.Pay("franje_1356296325_biz_api1.yahoo.es","1356296345",
                          self.request.remote_addr,"AcHhwt4WsEqB3tcpSOplSMzcxiIuAMMH4ZiPLtmz1fASuBhmHQEeWAQX")
-        paykey=pp.pay("http://dospadel.appspot.com/reserves","es_ES","EUR","franje18@yahoo.es",10.00,
-                      "http://dospadel.appspot.com",
-                      "http://dospadel.appspot.com/transactions")
-            
+        paykey=p.pay("http://dospadel.appspot.com/reserves","es_ES","EUR","franje_1356296325_biz@yahoo.es",10.00,
+                     "http://dospadel.appspot.com",
+                     "http://dospadel.appspot.com/transactions")
+        
         res=Reserve(key_name=paykey)
         res.product=product
         res.paykey=paykey
@@ -177,6 +198,16 @@ class ReservePage(webapp2.RequestHandler):
 class MyReservesPage(webapp2.RequestHandler):
     """Maneja el detalle de reservas de cada usuario"""
     def get(self):
+
+        ## login
+        user = users.get_current_user()
+        if user:
+            url = users.create_logout_url(self.request.uri)
+            url_text = 'logout'
+        else:
+            url = users.create_login_url(self.request.uri)
+            url_text = 'login'
+
         reserves = db.GqlQuery("SELECT *  "
                                "FROM Reserve "
                                "WHERE userid = :1 "
@@ -185,7 +216,9 @@ class MyReservesPage(webapp2.RequestHandler):
 
         template_values={
             'reserves' : reserves,
-            'user' : users.get_current_user(),
+            'nickname' : users.get_current_user(),
+            'url' : url,
+            'url_text' : url_text,
         }
         template = jinja_environment.get_template('myreserves.html')
         self.response.out.write(template.render(template_values))
@@ -198,6 +231,7 @@ class ReserveDetailPage(webapp2.RequestHandler):
 
         template_values={
             'reserve' : reserve,
+            'nickname':users.get_current_user(),
         }
         template = jinja_environment.get_template('reservedetail.html')
         self.response.out.write(template.render(template_values))
@@ -240,8 +274,11 @@ class Transactions(webapp2.RequestHandler):
         
         paykey=self.request.get('pay_key')
         k = db.Key.from_path('Reserve',paykey)
+        
+        logging.info(self.request.POST.copy())
+
         reserve=db.get(k)
-        reserve.status=self.request.get('status')
+        reserve.status=self.request.get('transaction[0].status_for_sender_txn')
         reserve.put()
 
 class Check(webapp2.RequestHandler):
@@ -267,12 +304,40 @@ class Check(webapp2.RequestHandler):
 
         self.response.out.write(reserves.count())
 
+class CancelReserve(webapp2.RequestHandler):
+    """Cancela una reserva y devuelve el dinero"""
+    def get(self):
+        pass
+
+    def post(self):
+        """ Comprueba que la reserva se puede cancelar, y si es así
+            cancela """
+        p=paypal.Refund("franje_1356296325_biz_api1.yahoo.es","1356296345",
+                         self.request.remote_addr,"AcHhwt4WsEqB3tcpSOplSMzcxiIuAMMH4ZiPLtmz1fASuBhmHQEeWAQX")
+        
+        p.refund(self.request.get('paykey'))
+        
+        
+        self.redirect("/reserves/"+self.request.get('paykey'))
+
 class AllProductsPage(webapp2.RequestHandler):
     """Lista todos los productos disponibles"""
     def get(self):
+        ## login
+        user = users.get_current_user()
+        if user:
+            url = users.create_logout_url(self.request.uri)
+            url_text = 'logout'
+        else:
+            url = users.create_login_url(self.request.uri)
+            url_text = 'login'
+
         products = Product.all()
         template_values={
             'products' : products,
+            'nickname' : user,
+            'url_text' : url_text,
+            'utl' : url,
         }
         template = jinja_environment.get_template('all_products.html')
         self.response.out.write(template.render(template_values))
@@ -316,5 +381,6 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/check', Check),
                                ('/products',AllProductsPage),
                                ('/admin',AdminPage),
+                               ('/cancel_reserve',CancelReserve),
                               ],
                               debug=True)

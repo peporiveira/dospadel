@@ -8,6 +8,9 @@ handlers:
 - url: /stylesheets
   static_dir: stylesheets
 
+- url: /img
+  static_dir: img
+
 - url: /src
   static_dir: src
 
@@ -48,6 +51,10 @@ handlers:
 - url: /admin
   script: dospadel.app
   login: admin
+
+- url: /cancel_reserve
+  script: dospadel.app
+  login: required
 
 libraries:
 - name: jinja2

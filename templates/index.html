@@ -1,29 +1,81 @@
-<html>
-<head>
-<title></title></head>
-<body>
+{% extends "base.html" %}
 
-<p>
-{{ nickname }}<a href="{{ url }}">{{ url_text }}</a>
-</p>
+{% block title%}
+  DOSPADEL
+{% endblock %}
 
-<form method="GET" action=".">
-  <input type="text" name='searched'/>
-  <input type="submit" value="search"/>
-</form>
-
-<div>
-{% for product in founded  %}
-<p><a href = product/{{ product.nm }}>{{ product.nm }}</a></p>
-<p>{{ product.desc }}</p>
-{% endfor %}
+{% block header %}
+<div class="navbar navbar-inverse navbar-fixed-top">
+  <div class="navbar-inner">
+    <div class="container">
+      <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </a>
+      <a class="brand" href="/">DOSPADEL</a>
+        <div class="nav-collapse collapse">
+          <ul class="nav">
+            <li class="active"><a href="/">Home</a></li>
+	    <li><a href="/new_product">New product</a></li>
+	    <li><a href="/reserves">My reserves</a></li>
+	    <li><a href="/products">All products</a></li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown"> {{nickname}} <b class="caret"></b></a>
+              <ul class="dropdown-menu">
+                  <li><a href="{{url}}">{{url_text}}</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div><!--/.nav-collapse -->
+    </div>
+  </div>
 </div>
+{% endblock %}
 
-<div>
-  <p><a href="/new_product">Nuevo producto (admin)</a></p>
-  <p><a href="/reserves">Mis reservas</a></p>
-  <p><a href="/products">Todos los productos</a></p>
+
+{% block content %}
+{{ super() }}
+<div class="row-fluid" id="content-bar">
+  <div class="row-fluid">
+
+    {% block search %}
+    <form class="form-search" method="GET" action=".">
+      <fieldset>
+	<input type="text" class="input-medium search-query" placeholder="search..." name='searched'/>
+	<button type="submit" class="btn">Search</button>
+      </fieldset>
+    </form>
+    {% endblock search %}
+
+    {% block product_grid %}
+    {# Mostrar productos en columnas de 4 #}
+    {% set i = 3 %}
+    {% for product in founded  %}
+    {% set i = i + 1 %}
+    {% if i > 3 %}
+    {% set i = 0 %}
+    <div class="row-fluid">
+      {% endif %}
+      <div class="span3">
+	<img class="img-rounded" src='/product/{{ product.nm }}/img'/>
+	<p><a href = product/{{ product.nm }}>{{ product.nm }}</a></p>
+	  <p>{{ product.desc }}</p>
+      </div>
+      {% if i == 3 %}
+        </div>
+      {% endif %}
+   {% endfor %}
+   {% endblock product_grid %}
+  </div>
 </div>
+{% endblock content %}
 
-</body>
-</html>
+
+{% block page_header %}
+<h1>Home<small>Reserva online!</small></h1>
+{% endblock page_header %}
+
+{% block breadcrumb%}
+<li class="active">Home</li>
+{% endblock breadcrumb %}

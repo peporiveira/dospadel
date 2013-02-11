@@ -1,20 +1,98 @@
-<html>
-<head><title>Productos disponibles</title></head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}
+Nuevo producto
+{% endblock title %}
+
+{% block header %}
+
+<div class="navbar navbar-inverse navbar-fixed-top">
+  <div class="navbar-inner">
+    <div class="container">
+      <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </a>
+      <a class="brand" href="#">DOSPADEL</a>
+      <div class="nav-collapse collapse">
+        <ul class="nav">
+          <li><a href="/">Home</a></li>
+	  <li class="active"><a href="/new_product">New product</a></li>
+	  <li><a href="/reserves">My reserves</a></li>
+	  <li><a href="/products">All products</a></li>
+          <li class="dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown"> {{user}} <b class="caret"></b></a>
+            <ul class="dropdown-menu">
+              <li><a href="{{url}}">{{url_text}}</a></li>
+            </ul>
+          </li>
+          </ul>
+      </div><!--/.nav-collapse -->
+    </div>
+  </div>
+</div>
+
+{% endblock header %}
 
 
-<form action="{{upload_url}}" enctype="multipart/form-data" method="POST">
-  <p>name<input type="text" name="nm"/></p>
-  <p>description<input type="text" name="desc"/></p>
-  <p>tags<input type="text" name="tags"/></p>
+{% block content%}
+{{ super() }}
 
-  <p>image<input type="file" name="img"/></p>
-  <p><input type="submit" name="switch"/></p>
-</form>
+<div class="row-fluid">
+  <div class="row-fluid">
+
+    <form class="form-horizontal" action="{{upload_url}}" enctype="multipart/form-data" method="POST">
+      <div class="control-group">
+	<label class="control-label">Name</label>
+	<div class="controls">
+	  <input type="text" id="inputName" name="nm" placeholder="name">
+	</div>
+      </div>
+      <div class="control-group">
+	<label class="control-label">Descripcion</label>
+	<div class="controls">
+	  <textarea rows="3" name="desc" placeholder="descripcion"></textarea>
+	</div>
+    </div>
+      <div class="control-group">
+	<label class="control-label">Tags</label>
+	<div class="controls">
+	  <textarea rows="3" name="tags" placeholder="tags"></textarea>
+	</div>
+      </div>
+      <div class="control-group">
+	<label class="control-label">Price</label>
+	<div class="controls">
+	  <input type="text"  name="price" placeholder="price/hour"></textarea>
+	</div>
+      </div>
+
+      <div class="control-group">
+	<label class="control-label">Avatar</label>
+	<div class="controls">
+	  <input type="file" name="img">      
+	</div>
+      </div>
+      <div class="control-group">
+	<div class="controls">
+	  <button type="submit" class="btn">Save</button>      
+	</div>
+      </div>
+    </form>
+  
+  </div>
+</div>
+{% endblock content %}
 
 
-</body>
-</html>
 
 
+{% block page_header %}
+<h1>Nuevo producto<small></small></h1>
+{% endblock page_header %}
 
+{% block breadcrumb%}
+<li><a href="/admin">Admin</a><span class="divider">/</span></li>
+<li class="active">New product</li>
+{% endblock breadcrumb %}

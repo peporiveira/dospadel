@@ -1,0 +1,45 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  {% block head %}
+  <link href="/stylesheets/bootstrap.min.css" rel="stylesheet" media="screen"/>
+  <script type="text/javascript" src="/src/jquery.js"></script>
+  <script type="text/javascript" src="/src/bootstrap.min.js"></script> <!-- estilo -->
+  <style type="text/css">
+    body {
+    padding-top: 60px;
+    padding-bottom: 40px;
+    }
+  </style>
+  <title>{% block title %}{% endblock %}</title>
+  {% endblock %}
+</head>
+<body>
+
+
+
+ 
+  {% block header %}{% endblock %}
+ 
+  
+  <div class="container">
+    {% block content %}
+      <div class="page-header">
+	{% block page_header %}
+	{% endblock page_header %}
+      </div>
+
+      <div class="breadcrumb">
+	{% block breadcrumb %}
+	{% endblock breadcrumb %}
+      </div>
+    {% endblock content %}
+  </div>
+  
+
+  <div>{% block footer %}{% endblock %}</div>
+
+
+
+</body>
+</html>
