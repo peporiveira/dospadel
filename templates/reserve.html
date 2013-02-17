@@ -6,6 +6,7 @@
   <link href="/stylesheets/datepicker.css" rel="stylesheet" media="screen"/>
   <script type="text/javascript" src="/src/bootstrap-datepicker.js"></script>
 
+
 {% endblock head%}
 
 {% block title %}
@@ -13,33 +14,8 @@ Producto
 {% endblock %}
 
 
-  <!--
-  <script>
-    function test(){
-      //alert("Prototype "+Prototype.Version);
-      var form = $('form_new_reserve');
-      var data = form.serialize()
- 
-      new Ajax.Request(
-        '/check',
-        {
-          method: 'POST',
-          parameters: data,
-          onComplete: showResponse
-        });
-    }
-    function showResponse(original_request){
-      //alert(original_request.responseText);
-      var response = parseInt(original_request.responseText,10);
-      if (response == 0)
-        alert("way! puedes reservar");
-      else
-        alert("esta ocupado :(");
 
-    }
-    
-  </script>
-  -->
+
 {% block header %}
   <div class="navbar navbar-inverse navbar-fixed-top">
     <div class="navbar-inner">
@@ -68,43 +44,18 @@ Producto
     </div>
   </div>
 {% endblock header %}
-<!--
-<div>
-<div id='product_nm'>{{ product.nm }}</div>
-<p id='product_desc'>{{ product.desc }}</p>
-<p><img src='{{product.nm}}/img'/></p>
-</div>
-
-{% if user %}
-<form method='POST' action={{ product.nm }} id='form_new_reserve'>
-  <input type="date" name="date"/>
-  <input type="hidden" name="name" value="{{product.nm}}"/>
-  <select name="time">
-    {% for element in journey %}
-    <option value={{ element.hour }}:00:00>{{ element.hour }}:00</option>
-    {% endfor %}
-  </select>
-
-  <input type="submit" value="reserve"/>
-<form>
-<input id="check" type="button" value="check"/>
-
-<script>
-  $('check').observe('click',test);
-</script>
-
-{% endif %}
--->
 
 {% block content %}
-<script>
-  $(function(){
-     $('.datepicker').datepicker()
-    }); 
-</script>
 
 <div class="container">
   <div class="row-fluid" id="content-bar">
+    <div class="row-fluid">
+      <div class="alert">
+	<button type="button" class="close" data-dismiss="alert">&times;</button>
+	<strong>El boton reserve se activara cuando la fecha introducida este disponible</strong>
+      </div>
+    </div>
+
     <div class="row-fluid">
       
       <div class="page-header">
@@ -123,14 +74,14 @@ Producto
 	</div>
 	<div class="span6">
 	  <form class='form-inline' method='POST' action={{ product.nm }} id='form_new_reserve'>
-	    <input type="text" class="datepicker" data-date-format="dd-mm-yyyy" name="date"/>
+	    <input type="text" id="form_timedate" class="datepicker" data-date-format="dd-mm-yyyy" name="date"/>
 	    <input type="hidden" name="name" value="{{product.nm}}"/>
-	    <select name="time">
+	    <select name="time" id="form_timedate">
 	      {% for element in journey %}
 	      <option value={{ element.hour }}:00:00>{{ element.hour }}:00</option>
 	      {% endfor %}
 	    </select>
-	    <button class="btn" type="submit">Reserve</button>
+	    <button id="button_new_reserve" class="btn" disabled="disabled" type="submit">Reserve</button>
 	  </form>
 	</div>
       </div>
@@ -143,4 +94,31 @@ Producto
   </div>
 </div>
 
+<script>
+  $(".alert").alert()
+
+  function check_reserve(){
+    $.post('/check',$('#form_new_reserve').serialize())
+    .done(function(data){
+      if(data == 0)
+        $('#button_new_reserve').removeAttr("disabled");
+      else
+        $('#button_new_reserve').attr("disabled","disabled");
+    });
+  }
+
+  $(document).ready(function(){
+    $('.datepicker').datepicker().on('changeDate',function(ev){
+      check_reserve();
+    }).data('datepicker');
+
+    $("select").change(function(){
+      check_reserve();
+    })
+    .change();
+  });
+</script>
 {% endblock content %}
+
+
+

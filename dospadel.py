@@ -208,14 +208,19 @@ class MyReservesPage(webapp2.RequestHandler):
             url = users.create_login_url(self.request.uri)
             url_text = 'login'
 
-        reserves = db.GqlQuery("SELECT *  "
+        expired = db.GqlQuery("SELECT *  "
                                "FROM Reserve "
-                               "WHERE userid = :1 "
+                               "WHERE userid = :1 and dt < :2 and status = :3 "
                                "ORDER BY created DESC LIMIT 10",
-                               users.get_current_user().user_id())
+                               users.get_current_user().user_id(),
+                               datetime.datetime.now(),
+                               "Completed")
+        #puede ser más económico hacer lo anterior con filte en lugar de tres consultas
 
         template_values={
-            'reserves' : reserves,
+            'expired' : expired,
+            #'refunded' : refunded,
+            #'confirmed' : confirmed,
             'nickname' : users.get_current_user(),
             'url' : url,
             'url_text' : url_text,
@@ -286,13 +291,14 @@ class Check(webapp2.RequestHandler):
     def get(self):
         pass
     def post(self):
+
         form_date=self.request.get('date')
         form_time=self.request.get('time')
-        form_name=self.request.get('name')
+        form_name=self.request.get('name')  #nombre del producto
 
         d=form_date.split('-',3)
         t=form_time.split(':',3)
-        dt=datetime.datetime(int(d[0]),int(d[1]),int(d[2]),int(t[0]))
+        dt=datetime.datetime(int(d[2]),int(d[1]),int(d[0]),int(t[0]))
 
         k = db.Key.from_path('Product', form_name)
         product=db.get(k)
@@ -301,7 +307,7 @@ class Check(webapp2.RequestHandler):
                                "FROM Reserve "
                                "WHERE dt = :1 AND product = :2",
                                dt,product)
-
+        logging.info('check devuelve '+str(reserves.count()))
         self.response.out.write(reserves.count())
 
 class CancelReserve(webapp2.RequestHandler):

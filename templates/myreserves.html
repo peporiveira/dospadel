@@ -38,23 +38,30 @@
 {{ super() }}
 <div class="row-fluid" id="content-bar">
   <div class="row-fluid">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Product</th>
-          <th>Date/Time</th>
-          <th>Status</th>
-        </tr>
-        </thead>
-      {% for reserve in reserves %}
-      <tr>
-	<td>{{reserve.product.nm}}</td>
-	<td>{{reserve.dt}}</td>
-	<td>{{reserve.status}}</td>
-	<td><a href="/reserves/{{reserve.paykey}}" class="btn btn-mini"><i class="icon-th-list"></i> Details</a>
-	</tr>
-      {% endfor %}
-      </table>
+    {% block reserves %}
+    {# clasificacion de reservas segun el estado.  #}
+    <div class="tabbable">
+      <ul class="nav nav-tabs">
+	<li class="active"><a href="#expired" data-toggle="tab">Expired</a></li>
+	<li><a href="#confirmed" data-toggle="tab">Confirmed</a></li>
+	<li><a href="#canceled" data-toggle="tab">Canceled</a></li>
+      </ul>
+      <div class="tab-content">
+	<div class="tab-content">
+	  <div class="tab-pane active" id="expired">
+	  
+	  </div>
+	  <div class="tab-pane" id="confirmed">
+	    <p>Estoy en confirmed</p>
+	  </div>
+	  <div class="tab-pane" id="canceled">
+	    <p>Estoy en canceled</p>
+	  </div>
+
+	</div>
+      </div>
+    </div>
+    {% endblock reserves %}
   </div>
 </div>
 {% endblock content %}
