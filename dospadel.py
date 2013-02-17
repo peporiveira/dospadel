@@ -20,6 +20,7 @@ from google.appengine.api import users
 from google.appengine.api import images                         #tratamiento de imagenes
 from google.appengine.ext import blobstore                      #subida de archivos
 from google.appengine.ext.webapp import blobstore_handlers
+from google.appengine.api import urlfetch
 
 #######################################################################################################
 #  MODELO DE DATOS
@@ -120,6 +121,36 @@ class UploadProductImage(blobstore_handlers.BlobstoreUploadHandler):
         p.put()
         self.redirect(str('product/'+p.nm))    
 
+class Check(webapp2.RequestHandler):
+    """Comprueba disponibilidad de una reserva"""
+    def post(self):
+        form_date=self.request.get('date')
+        form_time=self.request.get('time')
+        form_name=self.request.get('name')  #nombre del producto
+
+        #if form_date or form_time == '':
+        #    self.response.out.write(1)
+
+        d=form_date.split('-',3)
+        t=form_time.split(':',3)
+        dt=datetime.datetime(int(d[2]),int(d[1]),int(d[0]),int(t[0]))
+
+        #hay que reservar con 12 horas de antelacion
+        if dt < (datetime.datetime.now()+datetime.timedelta(hours=12)):
+            logging.info("intento de reserva en el pasado o con poca antelacion")
+            self.response.out.write(1)
+
+        k = db.Key.from_path('Product', form_name)
+        product=db.get(k)
+  
+        reserves = db.GqlQuery("SELECT *  "
+                               "FROM Reserve "
+                               "WHERE dt = :1 AND product = :2 AND status = :3 ",
+                               dt,product,'Completed')
+        logging.info('check devuelve '+str(reserves.count()))
+        self.response.out.write(reserves.count())
+
+#hereda de check
 class ReservePage(webapp2.RequestHandler):
     """Maneja las reservas de los productos"""
     def get(self,productnm):
@@ -152,47 +183,49 @@ class ReservePage(webapp2.RequestHandler):
         self.response.out.write(template.render(template_values))
   
     def post(self,productnm):
-        k=db.Key.from_path('Product',productnm)
-        product=db.get(k)
-
 
         date=self.request.get('date')                               #fecha de la reserva
         time=self.request.get('time')                               #hora  "  "  "
-        hours=self.request.get('hours')                             
-   
-        logging.info('fecha recibida '+date)
 
-        d=date.split('-',3)
-        t=time.split(':',2)
-        dt=datetime.datetime(int(d[2]),int(d[1]),int(d[0]),int(t[0]),int(t[1]))  #formato fecha mm/dd/yyyy
-
-        #falta controlar que las reservas no se solapen
-        p=paypal.Pay("franje_1356296325_biz_api1.yahoo.es","1356296345",
-                         self.request.remote_addr,"AcHhwt4WsEqB3tcpSOplSMzcxiIuAMMH4ZiPLtmz1fASuBhmHQEeWAQX")
-        paykey=p.pay("http://dospadel.appspot.com/reserves","es_ES","EUR","franje_1356296325_biz@yahoo.es",10.00,
-                     "http://dospadel.appspot.com",
-                     "http://dospadel.appspot.com/transactions")
-        
-        res=Reserve(key_name=paykey)
-        res.product=product
-        res.paykey=paykey
-        res.status="unknow"
-        res.userid=users.get_current_user().user_id()
-        res.dt=dt
 
         ##compruebo que no existe ya una reserva a esa hora y ese dia
-        #data={  'time':time,
-        #        'date':date,
-        #        'name':product.nm,
-        #     }
-        #raw_request=json.dumps(data)
-        #url_request=urllib2.Request("http://localhost:8080/check",raw_request)
-        #raw_response=urllib2.urlopen(url_request).read()
-        #if raw_response != 0:
-        #    return
-        #else:
-        res.put()
-        self.redirect('https://www.sandbox.paypal.com/webscr?cmd=_ap-payment&'+urllib.urlencode({'paykey':paykey}) )
+        form_fields = {
+            "name":productnm,
+            "date":date,
+            "time":time
+        }
+
+        # consulta a /check que dice si la reserva esta libre o no        
+        form_data = urllib.urlencode(form_fields)
+        result = urlfetch.fetch(url='http://dospadel.appspot.com/check',
+                                payload=form_data,
+                                method=urlfetch.POST,
+                                headers={'Content-Type':'application/x-www-form-urlencoded'})
+        
+        if result.status_code == 200:
+            if int(result.content) == 0:
+                d=date.split('-',3)
+                t=time.split(':',2)
+                dt=datetime.datetime(int(d[2]),int(d[1]),int(d[0]),int(t[0]),int(t[1]))  #formato fecha mm/dd/yyyy
+                k=db.Key.from_path('Product',productnm)
+                product=db.get(k)
+                
+                p=paypal.Pay("franje_1356296325_biz_api1.yahoo.es","1356296345",
+                                 self.request.remote_addr,"AcHhwt4WsEqB3tcpSOplSMzcxiIuAMMH4ZiPLtmz1fASuBhmHQEeWAQX")
+                paykey=p.pay("http://dospadel.appspot.com/reserves","es_ES","EUR","franje_1356296325_biz@yahoo.es",10.00,
+                             "http://dospadel.appspot.com",
+                             "http://dospadel.appspot.com/transactions")
+        
+                res=Reserve(key_name=paykey)
+                res.product=product
+                res.paykey=paykey
+                res.status="unknow"
+                res.userid=users.get_current_user().user_id()
+                res.dt=dt
+                res.put()
+                self.redirect('https://www.sandbox.paypal.com/webscr?cmd=_ap-payment&'+urllib.urlencode({'paykey':paykey}) )
+            else:
+                logging.info('intento de registrar una reserva erronea')
 
 
 class MyReservesPage(webapp2.RequestHandler):
@@ -208,19 +241,16 @@ class MyReservesPage(webapp2.RequestHandler):
             url = users.create_login_url(self.request.uri)
             url_text = 'login'
 
-        expired = db.GqlQuery("SELECT *  "
+        reserves = db.GqlQuery("SELECT *  "
                                "FROM Reserve "
-                               "WHERE userid = :1 and dt < :2 and status = :3 "
+                               "WHERE userid = :1 and status = :2 "
                                "ORDER BY created DESC LIMIT 10",
                                users.get_current_user().user_id(),
-                               datetime.datetime.now(),
                                "Completed")
         #puede ser más económico hacer lo anterior con filte en lugar de tres consultas
 
         template_values={
-            'expired' : expired,
-            #'refunded' : refunded,
-            #'confirmed' : confirmed,
+            'reserves': reserves,
             'nickname' : users.get_current_user(),
             'url' : url,
             'url_text' : url_text,
@@ -286,29 +316,6 @@ class Transactions(webapp2.RequestHandler):
         reserve.status=self.request.get('transaction[0].status_for_sender_txn')
         reserve.put()
 
-class Check(webapp2.RequestHandler):
-    """Comprueba disponibilidad de una reserva"""
-    def get(self):
-        pass
-    def post(self):
-
-        form_date=self.request.get('date')
-        form_time=self.request.get('time')
-        form_name=self.request.get('name')  #nombre del producto
-
-        d=form_date.split('-',3)
-        t=form_time.split(':',3)
-        dt=datetime.datetime(int(d[2]),int(d[1]),int(d[0]),int(t[0]))
-
-        k = db.Key.from_path('Product', form_name)
-        product=db.get(k)
-  
-        reserves = db.GqlQuery("SELECT *  "
-                               "FROM Reserve "
-                               "WHERE dt = :1 AND product = :2",
-                               dt,product)
-        logging.info('check devuelve '+str(reserves.count()))
-        self.response.out.write(reserves.count())
 
 class CancelReserve(webapp2.RequestHandler):
     """Cancela una reserva y devuelve el dinero"""
@@ -318,13 +325,18 @@ class CancelReserve(webapp2.RequestHandler):
     def post(self):
         """ Comprueba que la reserva se puede cancelar, y si es así
             cancela """
+
+
+        #TODO Requisitos para poder cancelar
+        #     No haber transcurrido mas de 12 horas desde que se reservó
+        #     
         p=paypal.Refund("franje_1356296325_biz_api1.yahoo.es","1356296345",
                          self.request.remote_addr,"AcHhwt4WsEqB3tcpSOplSMzcxiIuAMMH4ZiPLtmz1fASuBhmHQEeWAQX")
         
         p.refund(self.request.get('paykey'))
         
         
-        self.redirect("/reserves/"+self.request.get('paykey'))
+        self.redirect("/reserves/")
 
 class AllProductsPage(webapp2.RequestHandler):
     """Lista todos los productos disponibles"""

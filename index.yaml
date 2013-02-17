@@ -12,6 +12,19 @@ indexes:
 
 - kind: Reserve
   properties:
+  - name: status
   - name: userid
   - name: created
+    direction: desc
+
+- kind: Reserve
+  properties:
+  - name: userid
+  - name: created
+    direction: desc
+
+- kind: Reserve
+  properties:
+  - name: userid
+  - name: dt
     direction: desc

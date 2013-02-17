@@ -6,37 +6,18 @@
   <script type="text/javascript" src="/src/jquery.js"></script>
   <script type="text/javascript" src="/src/bootstrap.min.js"></script> <!-- estilo -->
   <style type="text/css">
-    
-    html, body {
-      height: 100%;
+  {% block style %}
+
+
+    body{
+      padding-top: 70px;
+
     }
-    footer {
-      color: #666;
-      background: #222;
-      padding: 17px 0 18px 0;
-      border-top: 1px solid #000;
-    }
-    footer a {
-      color: #999;
-    }
-    footer a:hover {
-      color: #efefef;
-    }
-    .wrapper {
-      min-height: 100%;
-      height: auto !important;
-      height: 100%;
-      margin: 0 auto -63px;
-    }
-    .push {
-      height: 63px;
-    }
-    /* not required for sticky footer; just pushes hero down a bit */
-    .wrapper > .container {
-      padding-top: 60px;
-    }
-   
+
+
+  {% endblock style %}
   </style>
+  
   <title>{% block title %}{% endblock %}</title>
   {% endblock %}
 </head>
@@ -44,29 +25,22 @@
 
 
   <div class="wrapper">
-    {% block header %}{% endblock %}
+    {% block header %}{% endblock header%}
     <div class="container">
       {% block content %}
       <div class="page-header">
-	{% block page_header %}
-	{% endblock page_header %}
+	       {% block page_header %}
+	       {% endblock page_header %}
       </div>
       
       <div class="breadcrumb">
-	{% block breadcrumb %}
-	{% endblock breadcrumb %}
+	      {% block breadcrumb %}
+	      {% endblock breadcrumb %}
       </div>
       {% endblock content %}
-      <div class="push"></div>
     </div>
   </div>
   
-  <footer>
-    <div class="container">
-    {% block footer %}sus muertos{% endblock %}
-    </div>
-  </footer>
-
 
 
 </body>

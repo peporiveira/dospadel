@@ -73,6 +73,7 @@ Producto
 	  <img class="img-polaroid" src="/product/{{product.nm}}/img"/>
 	</div>
 	<div class="span6">
+    {% if user %}
 	  <form class='form-inline' method='POST' action={{ product.nm }} id='form_new_reserve'>
 	    <input type="text" id="form_timedate" class="datepicker" data-date-format="dd-mm-yyyy" name="date"/>
 	    <input type="hidden" name="name" value="{{product.nm}}"/>
@@ -83,6 +84,7 @@ Producto
 	    </select>
 	    <button id="button_new_reserve" class="btn" disabled="disabled" type="submit">Reserve</button>
 	  </form>
+    {% endif %}
 	</div>
       </div>
       <div class="row-fluid">
@@ -95,7 +97,8 @@ Producto
 </div>
 
 <script>
-  $(".alert").alert()
+  {# comprueba disponibilidad de la reserva cada vez
+     que se modifica el formulario #}
 
   function check_reserve(){
     $.post('/check',$('#form_new_reserve').serialize())

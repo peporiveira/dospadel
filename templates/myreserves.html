@@ -39,28 +39,15 @@
 <div class="row-fluid" id="content-bar">
   <div class="row-fluid">
     {% block reserves %}
-    {# clasificacion de reservas segun el estado.  #}
-    <div class="tabbable">
-      <ul class="nav nav-tabs">
-	<li class="active"><a href="#expired" data-toggle="tab">Expired</a></li>
-	<li><a href="#confirmed" data-toggle="tab">Confirmed</a></li>
-	<li><a href="#canceled" data-toggle="tab">Canceled</a></li>
-      </ul>
-      <div class="tab-content">
-	<div class="tab-content">
-	  <div class="tab-pane active" id="expired">
-	  
-	  </div>
-	  <div class="tab-pane" id="confirmed">
-	    <p>Estoy en confirmed</p>
-	  </div>
-	  <div class="tab-pane" id="canceled">
-	    <p>Estoy en canceled</p>
-	  </div>
-
-	</div>
-      </div>
-    </div>
+    <table class="table">
+      {% for reserve in reserves %}
+      <tr>
+	<td>{{reserve.product.nm}}</td>
+	<td>{{reserve.dt}}</td>
+	<td><a href="/reserves/{{reserve.paykey}}">Detalle</a></td>
+      </tr>
+      {% endfor %}
+    </table>
     {% endblock reserves %}
   </div>
 </div>
