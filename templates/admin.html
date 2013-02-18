@@ -1,23 +1,52 @@
-<html>
-<head><title></title></head>
-<body>
+{% extends "base.html" %}
 
-<p>Jornada laboral</p>
-<p>Agregar hora</p>
-<form method='POST' action='/admin'>
-  <p><input type='hidden' name='option' value='jl'/></p>
-  <p>Hora<input type='text' name='hr'/></p>
-  <p><input type='submit' name='agregar'/></p>
-</form>
-<hr>
-<p>Dias festivos</p>
-<p>Agregar un festivo</p>
-<form method='POST' action='/admin'>
-  <p><input type='hidden' name='option' value='df'/></p>
-  <p>Fecha<input type='date' name='dt'/></p>
-  <p>Comentario<input type='text' name='comment'/></p>
-  <p><input type='submit' name='agregar'/></p>
-</form>
+{% block title%}
+  DOSPADEL - Administration
+{% endblock %}
 
-</body>
-</html>
+{% block activeadmin %}
+  class="active"
+{% endblock activeadmin %}
+
+{% block content %}
+{{ super() }}
+
+<div class="row-fluid" id="content-bar">
+  <div class="row-fluid">
+	<p class="lead">Journey</p>
+	<p><small>Add time</small></p>
+	<form class="form-horizontal" method='POST' action='/admin'>
+  		<input type='hidden' name='option' value='jl'/>
+
+  		<div class="control-group"><label class="control-label">Time</label>
+  			<div class="controls"><input type='text' name='hr' placeholder="time"/></div>
+  		</div>
+  		<button class="btn" type='submit' name='agregar'>add</button>
+	</form>
+    <hr>
+  	<p class="lead">Holidays</p>
+  	<p><small>Add holiday</small></p>
+  	<form class="form-horizontal" method='POST' action='/admin'>
+
+        <input type='hidden' name='option' value='df'/>
+    	<div class="control-group"><label class="control-label">Date</label>
+    		<div class="controls"><input type='text' name='dt' placeholder="date"/></div>
+    	</div>
+
+    	<div class="control-group"><label class="control-label">Coment</label>
+    		<div class="controls"><input type='text' name='comment' placeholder="coment"/></div>
+    	</div>
+
+    	<button class="btn" type='submit' name='agregar'>add</button>
+  	</form>
+  </div>
+</div>
+{% endblock content %}
+
+{% block page_header %}
+<h1>Administration<small></small></h1>
+{% endblock page_header %}
+
+{% block breadcrumb%}
+<li class="active">Admin</li>
+{% endblock breadcrumb %}

@@ -21,6 +21,7 @@ from google.appengine.api import images                         #tratamiento de 
 from google.appengine.ext import blobstore                      #subida de archivos
 from google.appengine.ext.webapp import blobstore_handlers
 from google.appengine.api import urlfetch
+from google.appengine.api import mail
 
 #######################################################################################################
 #  MODELO DE DATOS
@@ -85,20 +86,31 @@ class MainPage(webapp2.RequestHandler):
         template_values = {
             'url': url,
             'url_text': url_text,
-            'nickname': user,
+            'user': user,
             'founded': founded,
+            'admin' : users.is_current_user_admin(),
         }
         template = jinja_environment.get_template('index.html')
         self.response.out.write(template.render(template_values))
 
 class ProductPage(webapp2.RequestHandler):
-    """Pagina de cada producto"""
+    """Pagina insertar nuevo producto"""
     def get(self):
         """formulario para nuevo producto"""
+
+        ## login
+        user = users.get_current_user()
+        url = users.create_logout_url(self.request.uri)
+        url_text = 'logout'
+        
         upload_url = blobstore.create_upload_url('/upload')      #upload URL for the product image
 
         template_values = {
             'upload_url': upload_url,
+            'url': url,
+            'url_text': url_text,
+            'user': user,
+            'admin' : users.is_current_user_admin(),
         }
         template = jinja_environment.get_template('product.html')
         self.response.out.write(template.render(template_values))
@@ -117,7 +129,7 @@ class UploadProductImage(blobstore_handlers.BlobstoreUploadHandler):
         p.desc=self.request.get('desc')
         p.tags=self.request.get('tags')
         p.image=blob_info.key()
-        p.price=self.request.get('price')
+        p.price=float(self.request.get('price'))
         p.put()
         self.redirect(str('product/'+p.nm))    
 
@@ -135,6 +147,7 @@ class Check(webapp2.RequestHandler):
         t=form_time.split(':',3)
         dt=datetime.datetime(int(d[2]),int(d[1]),int(d[0]),int(t[0]))
 
+        #TODO tener en cuenta dias festivos
         #hay que reservar con 12 horas de antelacion
         if dt < (datetime.datetime.now()+datetime.timedelta(hours=12)):
             logging.info("intento de reserva en el pasado o con poca antelacion")
@@ -150,7 +163,6 @@ class Check(webapp2.RequestHandler):
         logging.info('check devuelve '+str(reserves.count()))
         self.response.out.write(reserves.count())
 
-#hereda de check
 class ReservePage(webapp2.RequestHandler):
     """Maneja las reservas de los productos"""
     def get(self,productnm):
@@ -177,7 +189,8 @@ class ReservePage(webapp2.RequestHandler):
             'user': user,
             'url_text': url_text,
             'url': url,
-            'journey': journey
+            'journey': journey,
+            'admin' : users.is_current_user_admin(),
         }
         template = jinja_environment.get_template('reserve.html')
         self.response.out.write(template.render(template_values))
@@ -212,7 +225,7 @@ class ReservePage(webapp2.RequestHandler):
                 
                 p=paypal.Pay("franje_1356296325_biz_api1.yahoo.es","1356296345",
                                  self.request.remote_addr,"AcHhwt4WsEqB3tcpSOplSMzcxiIuAMMH4ZiPLtmz1fASuBhmHQEeWAQX")
-                paykey=p.pay("http://dospadel.appspot.com/reserves","es_ES","EUR","franje_1356296325_biz@yahoo.es",10.00,
+                paykey=p.pay("http://dospadel.appspot.com/reserves","es_ES","EUR","franje_1356296325_biz@yahoo.es",product.price,
                              "http://dospadel.appspot.com",
                              "http://dospadel.appspot.com/transactions")
         
@@ -223,10 +236,10 @@ class ReservePage(webapp2.RequestHandler):
                 res.userid=users.get_current_user().user_id()
                 res.dt=dt
                 res.put()
+
                 self.redirect('https://www.sandbox.paypal.com/webscr?cmd=_ap-payment&'+urllib.urlencode({'paykey':paykey}) )
             else:
                 logging.info('intento de registrar una reserva erronea')
-
 
 class MyReservesPage(webapp2.RequestHandler):
     """Maneja el detalle de reservas de cada usuario"""
@@ -251,9 +264,10 @@ class MyReservesPage(webapp2.RequestHandler):
 
         template_values={
             'reserves': reserves,
-            'nickname' : users.get_current_user(),
+            'user' : users.get_current_user(),
             'url' : url,
             'url_text' : url_text,
+            'admin' : users.is_current_user_admin(),
         }
         template = jinja_environment.get_template('myreserves.html')
         self.response.out.write(template.render(template_values))
@@ -261,12 +275,24 @@ class MyReservesPage(webapp2.RequestHandler):
 class ReserveDetailPage(webapp2.RequestHandler):
     """Detalle de una reserva concreta."""
     def get(self,paykey):
+        ## login
+        user = users.get_current_user()
+        if user:
+            url = users.create_logout_url(self.request.uri)
+            url_text = 'logout'
+        else:
+            url = users.create_login_url(self.request.uri)
+            url_text = 'login'
+
         k=db.Key.from_path('Reserve',paykey)
         reserve=db.get(k)
 
         template_values={
-            'reserve' : reserve,
-            'nickname':users.get_current_user(),
+            'reserve': reserve,
+            'user' : users.get_current_user(),
+            'url' : url,
+            'url_text' : url_text,
+            'admin' : users.is_current_user_admin(),
         }
         template = jinja_environment.get_template('reservedetail.html')
         self.response.out.write(template.render(template_values))
@@ -286,7 +312,6 @@ class ProductImage(webapp2.RequestHandler):
             self.response.out.write(img)
             return
         self.error(404)
-
 
 class Transactions(webapp2.RequestHandler):
     """Recibe mensajes IPN de la API de paypal y agrega informacioon a Reserve"""
@@ -310,13 +335,34 @@ class Transactions(webapp2.RequestHandler):
         paykey=self.request.get('pay_key')
         k = db.Key.from_path('Reserve',paykey)
         
-        logging.info(self.request.POST.copy())
+        #logging.info(self.request.POST.copy())
 
         reserve=db.get(k)
         reserve.status=self.request.get('transaction[0].status_for_sender_txn')
+
+        #obtengo datos del usuario para enviar mail.
+        user = users.User(reserve.userid)
+
+        ##email informativo
+        message = mail.EmailMessage(sender="dospadel <franciscojesusjimenez@gmail.com>",
+                                    subject="Reserva completada")
+        message.to = user.nickname()+"<"+user.email()+">"
+        message.body = """
+            Reserva confirmada para el usuario %s para la fecha %s
+            a las %s. El codigo de la reserva es %s. Para detalles y cancelaciones (antes 
+            de transcurridas 2 horas desde que se efectuo la reserva) puede acceder en la
+            siguiente direccion http://dospadel.appspot.com/reserves/%s
+
+            Atentamente
+            DOSPADEL.com
+
+        """ % (user.email(), reserve.dt.date(), reserve.dt.time(), reserve.paykey, reserve.paykey)
+
         reserve.put()
-
-
+        try:
+            message.send()  #envio email informando al usuario de la transaccion
+        except (BadRequestError, InvalidSenderError,InvalidEmailError):
+            logging.info("error al enviar el mail")
 class CancelReserve(webapp2.RequestHandler):
     """Cancela una reserva y devuelve el dinero"""
     def get(self):
@@ -353,9 +399,10 @@ class AllProductsPage(webapp2.RequestHandler):
         products = Product.all()
         template_values={
             'products' : products,
-            'nickname' : user,
+            'user' : user,
             'url_text' : url_text,
-            'utl' : url,
+            'url' : url,
+            'admin' : users.is_current_user_admin(),
         }
         template = jinja_environment.get_template('all_products.html')
         self.response.out.write(template.render(template_values))
@@ -363,9 +410,17 @@ class AllProductsPage(webapp2.RequestHandler):
 class AdminPage(webapp2.RequestHandler):
     """configuracion para el administrador"""
     def get(self):
+        ## login
+        user = users.get_current_user()
+        url = users.create_logout_url(self.request.uri)
+        url_text = 'logout'
+        
         template_values={
-            
-            }
+            'user' : users.get_current_user(),
+            'url' : url,
+            'url_text' : url_text,
+            'admin' : users.is_current_user_admin(),
+        }
         template = jinja_environment.get_template('admin.html')
         self.response.out.write(template.render(template_values))
     def post(self):
